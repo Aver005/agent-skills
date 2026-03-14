@@ -1,143 +1,241 @@
 ---
 name: shadcn
-description: shadcn/ui component library best practices and patterns (formerly shadcn-ui). This skill should be used when writing, reviewing, or refactoring shadcn/ui components to ensure proper architecture, accessibility, and performance. Triggers on tasks involving Radix primitives, Tailwind styling, form validation with React Hook Form, data tables, theming, or component composition patterns.
+description: Manages shadcn components and projects — adding, searching, fixing, debugging, styling, and composing UI. Provides project context, component docs, and usage examples. Applies when working with shadcn/ui, component registries, presets, --preset codes, or any project with a components.json file. Also triggers for "shadcn init", "create an app with --preset", or "switch to --preset".
+user-invocable: false
 ---
 
-# shadcn/ui Community Best Practices
+# shadcn/ui
 
-Comprehensive best practices guide for shadcn/ui applications, maintained by the shadcn/ui community. Contains 58 rules across 10 categories, prioritized by impact to guide automated refactoring and code generation.
+A framework for building ui, components and design systems. Components are added as source code to the user's project via the CLI.
 
-## When to Apply
+> **IMPORTANT:** Run all CLI commands using the project's package runner: `npx shadcn@latest`, `pnpm dlx shadcn@latest`, or `bunx --bun shadcn@latest` — based on the project's `packageManager`. Examples below use `npx shadcn@latest` but substitute the correct runner for the project.
 
-Reference these guidelines when:
-- Installing and configuring shadcn/ui in a project
-- Writing new shadcn/ui components or composing primitives
-- Implementing forms with React Hook Form and Zod validation
-- Building data tables or handling large dataset displays
-- Customizing themes or adding dark mode support
-- Reviewing code for accessibility compliance
+## Current Project Context
 
-## Rule Categories by Priority
+```json
+!`npx shadcn@latest info --json 2>/dev/null || echo '{"error": "No shadcn project found. Run shadcn init first."}'`
+```
 
-| Priority | Category | Impact | Prefix |
-|----------|----------|--------|--------|
-| 1 | CLI & Project Setup | CRITICAL | `setup-` |
-| 2 | Component Architecture | CRITICAL | `arch-` |
-| 3 | Accessibility Preservation | CRITICAL | `ally-` |
-| 4 | Styling & Theming | HIGH | `style-` |
-| 5 | Form Patterns | HIGH | `form-` |
-| 6 | Data Display | MEDIUM-HIGH | `data-` |
-| 7 | Layout & Navigation | MEDIUM | `layout-` |
-| 8 | Component Composition | MEDIUM | `comp-` |
-| 9 | Performance Optimization | MEDIUM | `perf-` |
-| 10 | State Management | LOW-MEDIUM | `state-` |
+The JSON above contains the project config and installed components. Use `npx shadcn@latest docs <component>` to get documentation and example URLs for any component.
+
+## Principles
+
+1. **Use existing components first.** Use `npx shadcn@latest search` to check registries before writing custom UI. Check community registries too.
+2. **Compose, don't reinvent.** Settings page = Tabs + Card + form controls. Dashboard = Sidebar + Card + Chart + Table.
+3. **Use built-in variants before custom styles.** `variant="outline"`, `size="sm"`, etc.
+4. **Use semantic colors.** `bg-primary`, `text-muted-foreground` — never raw values like `bg-blue-500`.
+
+## Critical Rules
+
+These rules are **always enforced**. Each links to a file with Incorrect/Correct code pairs.
+
+### Styling & Tailwind → [styling.md](./rules/styling.md)
+
+- **`className` for layout, not styling.** Never override component colors or typography.
+- **No `space-x-*` or `space-y-*`.** Use `flex` with `gap-*`. For vertical stacks, `flex flex-col gap-*`.
+- **Use `size-*` when width and height are equal.** `size-10` not `w-10 h-10`.
+- **Use `truncate` shorthand.** Not `overflow-hidden text-ellipsis whitespace-nowrap`.
+- **No manual `dark:` color overrides.** Use semantic tokens (`bg-background`, `text-muted-foreground`).
+- **Use `cn()` for conditional classes.** Don't write manual template literal ternaries.
+- **No manual `z-index` on overlay components.** Dialog, Sheet, Popover, etc. handle their own stacking.
+
+### Forms & Inputs → [forms.md](./rules/forms.md)
+
+- **Forms use `FieldGroup` + `Field`.** Never use raw `div` with `space-y-*` or `grid gap-*` for form layout.
+- **`InputGroup` uses `InputGroupInput`/`InputGroupTextarea`.** Never raw `Input`/`Textarea` inside `InputGroup`.
+- **Buttons inside inputs use `InputGroup` + `InputGroupAddon`.**
+- **Option sets (2–7 choices) use `ToggleGroup`.** Don't loop `Button` with manual active state.
+- **`FieldSet` + `FieldLegend` for grouping related checkboxes/radios.** Don't use a `div` with a heading.
+- **Field validation uses `data-invalid` + `aria-invalid`.** `data-invalid` on `Field`, `aria-invalid` on the control. For disabled: `data-disabled` on `Field`, `disabled` on the control.
+
+### Component Structure → [composition.md](./rules/composition.md)
+
+- **Items always inside their Group.** `SelectItem` → `SelectGroup`. `DropdownMenuItem` → `DropdownMenuGroup`. `CommandItem` → `CommandGroup`.
+- **Use `asChild` (radix) or `render` (base) for custom triggers.** Check `base` field from `npx shadcn@latest info`. → [base-vs-radix.md](./rules/base-vs-radix.md)
+- **Dialog, Sheet, and Drawer always need a Title.** `DialogTitle`, `SheetTitle`, `DrawerTitle` required for accessibility. Use `className="sr-only"` if visually hidden.
+- **Use full Card composition.** `CardHeader`/`CardTitle`/`CardDescription`/`CardContent`/`CardFooter`. Don't dump everything in `CardContent`.
+- **Button has no `isPending`/`isLoading`.** Compose with `Spinner` + `data-icon` + `disabled`.
+- **`TabsTrigger` must be inside `TabsList`.** Never render triggers directly in `Tabs`.
+- **`Avatar` always needs `AvatarFallback`.** For when the image fails to load.
+
+### Use Components, Not Custom Markup → [composition.md](./rules/composition.md)
+
+- **Use existing components before custom markup.** Check if a component exists before writing a styled `div`.
+- **Callouts use `Alert`.** Don't build custom styled divs.
+- **Empty states use `Empty`.** Don't build custom empty state markup.
+- **Toast via `sonner`.** Use `toast()` from `sonner`.
+- **Use `Separator`** instead of `<hr>` or `<div className="border-t">`.
+- **Use `Skeleton`** for loading placeholders. No custom `animate-pulse` divs.
+- **Use `Badge`** instead of custom styled spans.
+
+### Icons → [icons.md](./rules/icons.md)
+
+- **Icons in `Button` use `data-icon`.** `data-icon="inline-start"` or `data-icon="inline-end"` on the icon.
+- **No sizing classes on icons inside components.** Components handle icon sizing via CSS. No `size-4` or `w-4 h-4`.
+- **Pass icons as objects, not string keys.** `icon={CheckIcon}`, not a string lookup.
+
+### CLI
+
+- **Never decode or fetch preset codes manually.** Pass them directly to `npx shadcn@latest init --preset <code>`.
+
+## Key Patterns
+
+These are the most common patterns that differentiate correct shadcn/ui code. For edge cases, see the linked rule files above.
+
+```tsx
+// Form layout: FieldGroup + Field, not div + Label.
+<FieldGroup>
+  <Field>
+    <FieldLabel htmlFor="email">Email</FieldLabel>
+    <Input id="email" />
+  </Field>
+</FieldGroup>
+
+// Validation: data-invalid on Field, aria-invalid on the control.
+<Field data-invalid>
+  <FieldLabel>Email</FieldLabel>
+  <Input aria-invalid />
+  <FieldDescription>Invalid email.</FieldDescription>
+</Field>
+
+// Icons in buttons: data-icon, no sizing classes.
+<Button>
+  <SearchIcon data-icon="inline-start" />
+  Search
+</Button>
+
+// Spacing: gap-*, not space-y-*.
+<div className="flex flex-col gap-4">  // correct
+<div className="space-y-4">           // wrong
+
+// Equal dimensions: size-*, not w-* h-*.
+<Avatar className="size-10">   // correct
+<Avatar className="w-10 h-10"> // wrong
+
+// Status colors: Badge variants or semantic tokens, not raw colors.
+<Badge variant="secondary">+20.1%</Badge>    // correct
+<span className="text-emerald-600">+20.1%</span> // wrong
+```
+
+## Component Selection
+
+| Need                       | Use                                                                                                 |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| Button/action              | `Button` with appropriate variant                                                                   |
+| Form inputs                | `Input`, `Select`, `Combobox`, `Switch`, `Checkbox`, `RadioGroup`, `Textarea`, `InputOTP`, `Slider` |
+| Toggle between 2–5 options | `ToggleGroup` + `ToggleGroupItem`                                                                   |
+| Data display               | `Table`, `Card`, `Badge`, `Avatar`                                                                  |
+| Navigation                 | `Sidebar`, `NavigationMenu`, `Breadcrumb`, `Tabs`, `Pagination`                                     |
+| Overlays                   | `Dialog` (modal), `Sheet` (side panel), `Drawer` (bottom sheet), `AlertDialog` (confirmation)       |
+| Feedback                   | `sonner` (toast), `Alert`, `Progress`, `Skeleton`, `Spinner`                                        |
+| Command palette            | `Command` inside `Dialog`                                                                           |
+| Charts                     | `Chart` (wraps Recharts)                                                                            |
+| Layout                     | `Card`, `Separator`, `Resizable`, `ScrollArea`, `Accordion`, `Collapsible`                          |
+| Empty states               | `Empty`                                                                                             |
+| Menus                      | `DropdownMenu`, `ContextMenu`, `Menubar`                                                            |
+| Tooltips/info              | `Tooltip`, `HoverCard`, `Popover`                                                                   |
+
+## Key Fields
+
+The injected project context contains these key fields:
+
+- **`aliases`** → use the actual alias prefix for imports (e.g. `@/`, `~/`), never hardcode.
+- **`isRSC`** → when `true`, components using `useState`, `useEffect`, event handlers, or browser APIs need `"use client"` at the top of the file. Always reference this field when advising on the directive.
+- **`tailwindVersion`** → `"v4"` uses `@theme inline` blocks; `"v3"` uses `tailwind.config.js`.
+- **`tailwindCssFile`** → the global CSS file where custom CSS variables are defined. Always edit this file, never create a new one.
+- **`style`** → component visual treatment (e.g. `nova`, `vega`).
+- **`base`** → primitive library (`radix` or `base`). Affects component APIs and available props.
+- **`iconLibrary`** → determines icon imports. Use `lucide-react` for `lucide`, `@tabler/icons-react` for `tabler`, etc. Never assume `lucide-react`.
+- **`resolvedPaths`** → exact file-system destinations for components, utils, hooks, etc.
+- **`framework`** → routing and file conventions (e.g. Next.js App Router vs Vite SPA).
+- **`packageManager`** → use this for any non-shadcn dependency installs (e.g. `pnpm add date-fns` vs `npm install date-fns`).
+
+See [cli.md — `info` command](./cli.md) for the full field reference.
+
+## Component Docs, Examples, and Usage
+
+Run `npx shadcn@latest docs <component>` to get the URLs for a component's documentation, examples, and API reference. Fetch these URLs to get the actual content.
+
+```bash
+npx shadcn@latest docs button dialog select
+```
+
+**When creating, fixing, debugging, or using a component, always run `npx shadcn@latest docs` and fetch the URLs first.** This ensures you're working with the correct API and usage patterns rather than guessing.
+
+## Workflow
+
+1. **Get project context** — already injected above. Run `npx shadcn@latest info` again if you need to refresh.
+2. **Check installed components first** — before running `add`, always check the `components` list from project context or list the `resolvedPaths.ui` directory. Don't import components that haven't been added, and don't re-add ones already installed.
+3. **Find components** — `npx shadcn@latest search`.
+4. **Get docs and examples** — run `npx shadcn@latest docs <component>` to get URLs, then fetch them. Use `npx shadcn@latest view` to browse registry items you haven't installed. To preview changes to installed components, use `npx shadcn@latest add --diff`.
+5. **Install or update** — `npx shadcn@latest add`. When updating existing components, use `--dry-run` and `--diff` to preview changes first (see [Updating Components](#updating-components) below).
+6. **Fix imports in third-party components** — After adding components from community registries (e.g. `@bundui`, `@magicui`), check the added non-UI files for hardcoded import paths like `@/components/ui/...`. These won't match the project's actual aliases. Use `npx shadcn@latest info` to get the correct `ui` alias (e.g. `@workspace/ui/components`) and rewrite the imports accordingly. The CLI rewrites imports for its own UI files, but third-party registry components may use default paths that don't match the project.
+7. **Review added components** — After adding a component or block from any registry, **always read the added files and verify they are correct**. Check for missing sub-components (e.g. `SelectItem` without `SelectGroup`), missing imports, incorrect composition, or violations of the [Critical Rules](#critical-rules). Also replace any icon imports with the project's `iconLibrary` from the project context (e.g. if the registry item uses `lucide-react` but the project uses `hugeicons`, swap the imports and icon names accordingly). Fix all issues before moving on.
+8. **Registry must be explicit** — When the user asks to add a block or component, **do not guess the registry**. If no registry is specified (e.g. user says "add a login block" without specifying `@shadcn`, `@tailark`, etc.), ask which registry to use. Never default to a registry on behalf of the user.
+9. **Switching presets** — Ask the user first: **reinstall**, **merge**, or **skip**?
+   - **Reinstall**: `npx shadcn@latest init --preset <code> --force --reinstall`. Overwrites all components.
+   - **Merge**: `npx shadcn@latest init --preset <code> --force --no-reinstall`, then run `npx shadcn@latest info` to list installed components, then for each installed component use `--dry-run` and `--diff` to [smart merge](#updating-components) it individually.
+   - **Skip**: `npx shadcn@latest init --preset <code> --force --no-reinstall`. Only updates config and CSS, leaves components as-is.
+   - **Important**: Always run preset commands inside the user's project directory. The CLI automatically preserves the current base (`base` vs `radix`) from `components.json`. If you must use a scratch/temp directory (e.g. for `--dry-run` comparisons), pass `--base <current-base>` explicitly — preset codes do not encode the base.
+
+## Updating Components
+
+When the user asks to update a component from upstream while keeping their local changes, use `--dry-run` and `--diff` to intelligently merge. **NEVER fetch raw files from GitHub manually — always use the CLI.**
+
+1. Run `npx shadcn@latest add <component> --dry-run` to see all files that would be affected.
+2. For each file, run `npx shadcn@latest add <component> --diff <file>` to see what changed upstream vs local.
+3. Decide per file based on the diff:
+   - No local changes → safe to overwrite.
+   - Has local changes → read the local file, analyze the diff, and apply upstream updates while preserving local modifications.
+   - User says "just update everything" → use `--overwrite`, but confirm first.
+4. **Never use `--overwrite` without the user's explicit approval.**
 
 ## Quick Reference
 
-### 1. CLI & Project Setup (CRITICAL)
+```bash
+# Create a new project.
+npx shadcn@latest init --name my-app --preset base-nova
+npx shadcn@latest init --name my-app --preset a2r6bw --template vite
 
-- [`setup-components-json`](references/setup-components-json.md) - Configure components.json before adding components
-- [`setup-path-aliases`](references/setup-path-aliases.md) - Configure TypeScript path aliases to match components.json
-- [`setup-cn-utility`](references/setup-cn-utility.md) - Create the cn utility before using components
-- [`setup-use-cli-not-copy`](references/setup-use-cli-not-copy.md) - Use CLI to add components instead of copy-paste
-- [`setup-css-variables-theme`](references/setup-css-variables-theme.md) - Enable CSS variables for consistent theming
-- [`setup-rsc-configuration`](references/setup-rsc-configuration.md) - Set RSC flag based on framework support
+# Create a monorepo project.
+npx shadcn@latest init --name my-app --preset base-nova --monorepo
+npx shadcn@latest init --name my-app --preset base-nova --template next --monorepo
 
-### 2. Component Architecture (CRITICAL)
+# Initialize existing project.
+npx shadcn@latest init --preset base-nova
+npx shadcn@latest init --defaults  # shortcut: --template=next --preset=base-nova
 
-- [`arch-use-asChild-for-custom-triggers`](references/arch-use-asChild-for-custom-triggers.md) - Use asChild prop for custom trigger elements
-- [`arch-preserve-radix-primitive-structure`](references/arch-preserve-radix-primitive-structure.md) - Maintain Radix compound component hierarchy
-- [`arch-extend-variants-with-cva`](references/arch-extend-variants-with-cva.md) - Use Class Variance Authority for type-safe variants
-- [`arch-use-cn-for-class-merging`](references/arch-use-cn-for-class-merging.md) - Use cn() utility for safe Tailwind class merging
-- [`arch-forward-refs-for-composable-components`](references/arch-forward-refs-for-composable-components.md) - Forward refs for form and focus integration
-- [`arch-isolate-component-variants`](references/arch-isolate-component-variants.md) - Separate base styles from variant-specific styles
+# Add components.
+npx shadcn@latest add button card dialog
+npx shadcn@latest add @magicui/shimmer-button
+npx shadcn@latest add --all
 
-### 3. Accessibility Preservation (CRITICAL)
+# Preview changes before adding/updating.
+npx shadcn@latest add button --dry-run
+npx shadcn@latest add button --diff button.tsx
+npx shadcn@latest add @acme/form --view button.tsx
 
-- [`ally-preserve-aria-attributes`](references/ally-preserve-aria-attributes.md) - Keep Radix ARIA attributes intact
-- [`ally-provide-sr-only-labels`](references/ally-provide-sr-only-labels.md) - Add screen reader labels for icon buttons
-- [`ally-maintain-focus-management`](references/ally-maintain-focus-management.md) - Preserve focus trapping in modals
-- [`ally-preserve-keyboard-navigation`](references/ally-preserve-keyboard-navigation.md) - Keep WAI-ARIA keyboard patterns
-- [`ally-ensure-color-contrast`](references/ally-ensure-color-contrast.md) - Maintain WCAG color contrast ratios
-- [`ally-dialog-title-required`](references/ally-dialog-title-required.md) - Always include DialogTitle for screen readers
-- [`ally-form-field-labels`](references/ally-form-field-labels.md) - Associate labels with form controls
-- [`ally-aria-invalid-errors`](references/ally-aria-invalid-errors.md) - Use aria-invalid for form error states
-- [`ally-checkbox-label-association`](references/ally-checkbox-label-association.md) - Wrap Checkbox with Label for click target
-- [`ally-focus-visible-styles`](references/ally-focus-visible-styles.md) - Preserve focus visible styles for keyboard navigation
+# Search registries.
+npx shadcn@latest search @shadcn -q "sidebar"
+npx shadcn@latest search @tailark -q "stats"
 
-### 4. Styling & Theming (HIGH)
+# Get component docs and example URLs.
+npx shadcn@latest docs button dialog select
 
-- [`style-use-css-variables-for-theming`](references/style-use-css-variables-for-theming.md) - Use CSS variables for theme colors
-- [`style-avoid-important-overrides`](references/style-avoid-important-overrides.md) - Never use !important for style overrides
-- [`style-use-tailwind-theme-extend`](references/style-use-tailwind-theme-extend.md) - Extend Tailwind theme for design tokens
-- [`style-consistent-spacing-scale`](references/style-consistent-spacing-scale.md) - Use consistent Tailwind spacing scale
-- [`style-responsive-design-patterns`](references/style-responsive-design-patterns.md) - Apply mobile-first responsive design
-- [`style-dark-mode-support`](references/style-dark-mode-support.md) - Support dark mode with CSS variables
+# View registry item details (for items not yet installed).
+npx shadcn@latest view @shadcn/button
+```
 
-### 5. Form Patterns (HIGH)
+**Named presets:** `base-nova`, `radix-nova`
+**Templates:** `next`, `vite`, `start`, `react-router`, `astro` (all support `--monorepo`) and `laravel` (not supported for monorepo)
+**Preset codes:** Base62 strings starting with `a` (e.g. `a2r6bw`), from [ui.shadcn.com](https://ui.shadcn.com).
 
-- [`form-use-react-hook-form-integration`](references/form-use-react-hook-form-integration.md) - Integrate with React Hook Form
-- [`form-use-zod-for-schema-validation`](references/form-use-zod-for-schema-validation.md) - Use Zod for type-safe validation
-- [`form-show-validation-errors-correctly`](references/form-show-validation-errors-correctly.md) - Show errors at appropriate times
-- [`form-handle-async-validation`](references/form-handle-async-validation.md) - Debounce async validation calls
-- [`form-reset-form-state-correctly`](references/form-reset-form-state-correctly.md) - Reset form state after submission
+## Detailed References
 
-### 6. Data Display (MEDIUM-HIGH)
-
-- [`data-use-tanstack-table-for-complex-tables`](references/data-use-tanstack-table-for-complex-tables.md) - Use TanStack Table for sorting/filtering
-- [`data-virtualize-large-lists`](references/data-virtualize-large-lists.md) - Virtualize lists with 100+ items
-- [`data-use-skeleton-loading-states`](references/data-use-skeleton-loading-states.md) - Use Skeleton for loading states
-- [`data-paginate-server-side`](references/data-paginate-server-side.md) - Paginate large datasets server-side
-- [`data-empty-states-with-guidance`](references/data-empty-states-with-guidance.md) - Provide actionable empty states
-
-### 7. Layout & Navigation (MEDIUM)
-
-- [`layout-sidebar-provider`](references/layout-sidebar-provider.md) - Wrap layout with SidebarProvider
-- [`layout-sidebar-collapsible`](references/layout-sidebar-collapsible.md) - Configure sidebar collapsible behavior
-- [`layout-sidebar-groups`](references/layout-sidebar-groups.md) - Organize sidebar navigation with groups
-- [`layout-sheet-mobile-nav`](references/layout-sheet-mobile-nav.md) - Use Sheet for mobile navigation overlay
-- [`layout-breadcrumb-navigation`](references/layout-breadcrumb-navigation.md) - Implement breadcrumbs for deep navigation
-
-### 8. Component Composition (MEDIUM)
-
-- [`comp-compose-with-compound-components`](references/comp-compose-with-compound-components.md) - Use compound component patterns
-- [`comp-use-drawer-for-mobile-modals`](references/comp-use-drawer-for-mobile-modals.md) - Use Drawer on mobile devices
-- [`comp-combine-command-with-popover`](references/comp-combine-command-with-popover.md) - Create searchable selects with Command
-- [`comp-nest-dialogs-correctly`](references/comp-nest-dialogs-correctly.md) - Manage nested dialog focus correctly
-- [`comp-create-reusable-form-fields`](references/comp-create-reusable-form-fields.md) - Extract reusable form field components
-- [`comp-use-slot-pattern-for-flexibility`](references/comp-use-slot-pattern-for-flexibility.md) - Use slot pattern for flexible content
-
-### 9. Performance Optimization (MEDIUM)
-
-- [`perf-lazy-load-heavy-components`](references/perf-lazy-load-heavy-components.md) - Lazy load components over 50KB
-- [`perf-memoize-expensive-renders`](references/perf-memoize-expensive-renders.md) - Memoize list items and expensive components
-- [`perf-optimize-icon-imports`](references/perf-optimize-icon-imports.md) - Use direct imports for Lucide icons
-- [`perf-avoid-unnecessary-rerenders-in-forms`](references/perf-avoid-unnecessary-rerenders-in-forms.md) - Isolate form field watching
-- [`perf-debounce-search-inputs`](references/perf-debounce-search-inputs.md) - Debounce search and filter inputs
-
-### 10. State Management (LOW-MEDIUM)
-
-- [`state-prefer-uncontrolled-for-simple-inputs`](references/state-prefer-uncontrolled-for-simple-inputs.md) - Use uncontrolled for simple forms
-- [`state-lift-state-to-appropriate-level`](references/state-lift-state-to-appropriate-level.md) - Lift state to lowest common ancestor
-- [`state-use-controlled-dialog-state`](references/state-use-controlled-dialog-state.md) - Control dialogs for programmatic access
-- [`state-colocate-state-with-components`](references/state-colocate-state-with-components.md) - Keep state close to where it's used
-
-## How to Use
-
-Read individual reference files for detailed explanations and code examples:
-
-- [Section definitions](references/_sections.md) - Category structure and impact levels
-- [Rule template](assets/templates/_template.md) - Template for adding new rules
-
-## Full Compiled Document
-
-For a single-file reference containing all rules, see [AGENTS.md](AGENTS.md).
-
-## Reference Files
-
-| File | Description |
-|------|-------------|
-| [AGENTS.md](AGENTS.md) | Complete compiled guide with all rules |
-| [references/_sections.md](references/_sections.md) | Category definitions and ordering |
-| [assets/templates/_template.md](assets/templates/_template.md) | Template for new rules |
-| [metadata.json](metadata.json) | Version and reference information |
+- [rules/forms.md](./rules/forms.md) — FieldGroup, Field, InputGroup, ToggleGroup, FieldSet, validation states
+- [rules/composition.md](./rules/composition.md) — Groups, overlays, Card, Tabs, Avatar, Alert, Empty, Toast, Separator, Skeleton, Badge, Button loading
+- [rules/icons.md](./rules/icons.md) — data-icon, icon sizing, passing icons as objects
+- [rules/styling.md](./rules/styling.md) — Semantic colors, variants, className, spacing, size, truncate, dark mode, cn(), z-index
+- [rules/base-vs-radix.md](./rules/base-vs-radix.md) — asChild vs render, Select, ToggleGroup, Slider, Accordion
+- [cli.md](./cli.md) — Commands, flags, presets, templates
+- [customization.md](./customization.md) — Theming, CSS variables, extending components
